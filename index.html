@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>洗車用品出單與歷史管理系統</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding-bottom: 75px; }
+    .card { border-radius: 16px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .btn-lg-custom { padding: 14px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 12px; }
+    .btn-action { min-height: 48px; font-size: 1rem; font-weight: 600; border-radius: 10px; }
+    .form-control, .form-select { height: 48px; font-size: 1rem; border-radius: 10px; }
+    .search-results-list { max-height: 200px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 10px; background: white; position: absolute; width: calc(100% - 2rem); z-index: 1050; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .search-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .search-item:hover { background-color: #f8f9fa; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e9ecef; z-index: 1000; height: 65px; display: flex; }
+    .bottom-nav-btn { flex: 1; border: none; background: none; font-size: 0.85rem; font-weight: bold; color: #6c757d; }
+    .bottom-nav-btn.active { color: #0d6efd; background-color: #e7f1ff; }
+    
+    /* 自訂表格通用樣式 */
+    .table-auto-fit { table-layout: auto; width: 100%; }
+    .table-auto-fit th, .table-auto-fit td { vertical-align: middle; }
+    .nowrap-cell { white-space: nowrap !important; word-break: keep-all !important; }
+
+    /* 📱 專為手機一頁截圖優化的單據彈窗樣式 */
+    .modal-compact .modal-body { padding: 6px !important; }
+    .modal-compact .modal-header { padding: 6px 10px !important; }
+    .modal-doc-header { background: #f8f9fa; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 0.78rem; line-height: 1.3; }
+    
+    /* 表格基礎佈局：嚴格鎖定寬度，不產生滾動條 */
+    .doc-table-strict { 
+      font-size: 0.72rem !important; 
+      margin-bottom: 4px !important; 
+      width: 100% !important; 
+      table-layout: fixed !important; 
+    }
+    .doc-table-strict th, .doc-table-strict td { 
+      padding: 3px 1px !important; 
+      text-align: center; 
+      vertical-align: middle; 
+      white-space: nowrap !important; 
+    }
+
+    /* 品名欄位：強制不換行，過長時顯示省略號 (...) */
+    .doc-table-strict .p-name-no-wrap { 
+      text-align: left !important; 
+      white-space: nowrap !important; 
+      overflow: hidden !important; 
+      text-overflow: ellipsis !important; 
+      display: block; 
+      width: 100%; 
+    }
+    
+    .doc-summary-box { font-size: 0.8rem; line-height: 1.25; padding-top: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="container py-3">
+
+  <!-- API 設定 -->
+  <div class="accordion mb-3" id="apiAccordion">
+    <div class="accordion-item" style="border-radius: 12px; overflow: hidden;">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed py-2 text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#apiCollapse">⚙️ 雲端 API 設定</button>
+      </h2>
+      <div id="apiCollapse" class="accordion-collapse collapse" data-bs-parent="#apiAccordion">
+        <div class="accordion-body">
+          <input type="text" id="apiUrl" class="form-control mb-2" placeholder="貼上 GAS /exec 網址">
+          <button class="btn btn-secondary w-100 btn-action" onclick="saveApiUrl()">儲存網址</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 登入區塊 -->
+  <div id="loginSection" class="row justify-content-center my-4">
+    <div class="col-12 col-md-5">
+      <div class="card p-4">
+        <h3 class="text-center mb-4 fw-bold text-primary">洗車用品出單系統</h3>
+        <div class="mb-3"><label class="fw-bold">帳號</label><input type="text" id="username" class="form-control" placeholder="admin / sales1 / stock1"></div>
+        <div class="mb-4"><label class="fw-bold">密碼</label><input type="password" id="password" class="form-control" placeholder="輸入密碼"></div>
+        <button class="btn btn-primary w-100 btn-lg-custom shadow-sm" onclick="login()">登 入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主要操作區 -->
+  <div id="mainSection" style="display:none;">
+    
+    <!-- 頂樓用戶資訊 -->
+    <div class="card p-3 d-flex flex-row justify-content-between align-items-center">
+      <div><span id="userRoleBadge" class="badge bg-primary fs-6 me-1"></span><strong id="userInfo" class="fs-5"></strong></div>
+      <button class="btn btn-outline-danger btn-sm px-3" style="border-radius: 8px;" onclick="logout()">登出</button>
+    </div>
+
+    <!-- 頁籤 1: 業務出單 -->
+    <div id="tabCreateOrder">
+      <!-- 1. 客戶資訊 -->
+      <div class="card p-3" style="position: relative;">
+        <h5 class="fw-bold mb-3">👤 1. 客戶資訊</h5>
+        <div class="mb-2 position-relative">
+          <input type="text" id="custSearchInput" class="form-control" placeholder="🔍 搜尋歷史客戶 (輸入姓名或電話)" oninput="filterCustomers()">
+          <div id="custSearchResults" class="search-results-list" style="display:none;"></div>
+        </div>
+        <input type="text" id="custName" class="form-control mb-2" placeholder="客戶姓名 / 公司名稱">
+        <input type="tel" id="custPhone" class="form-control mb-2" placeholder="聯絡電話">
+        <input type="text" id="custAddr" class="form-control" placeholder="送貨地址">
+      </div>
+
+      <!-- 2. 選擇商品 -->
+      <div class="card p-3" style="position: relative;">
+        <h5 class="fw-bold mb-3">🧼 2. 選擇商品 (模糊搜尋)</h5>
+        <div class="mb-2 position-relative">
+          <input type="text" id="prodSearchInput" class="form-control" placeholder="🔍 輸入關鍵字 (例: 4L鐵粉, 泡沫, 鍍膜)" oninput="filterProducts()">
+          <div id="searchResults" class="search-results-list" style="display:none;"></div>
+        </div>
+
+        <div id="selectedProdCard" class="alert alert-info py-2 mb-2" style="display:none;">
+          <small class="text-muted">已選擇商品：</small><br><strong id="selectedProdText" class="fs-6"></strong>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-5"><input type="number" id="prodQty" class="form-control text-center fs-5" value="1" min="1"></div>
+          <div class="col-7"><button class="btn btn-success w-100 btn-action" onclick="addItem()">＋ 加入項目</button></div>
+        </div>
+
+        <!-- 商品購物車 -->
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle text-center mt-2 table-auto-fit" style="font-size: 0.95rem;">
+            <thead class="table-light">
+              <tr>
+                <th>品名</th>
+                <th>單價</th>
+                <th>成本</th>
+                <th>數量</th>
+                <th>售價小計</th>
+                <th>成本小計</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="cartTable"></tbody>
+          </table>
+        </div>
+
+        <!-- 計算區 -->
+        <div class="bg-light p-3 rounded-3 mt-2">
+          <div class="d-flex justify-content-between mb-2"><span>原價總金額：</span><span class="fw-bold">$<span id="originalTotal">0.00</span></span></div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-5"><span>整筆折扣：</span></div>
+            <div class="col-7"><input type="number" id="discountRate" class="form-control text-center" value="0.90" step="0.01" min="0.1" max="1" oninput="calculateTotal()"></div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center fs-4 text-danger fw-bold border-top pt-2">
+            <span>折後實收：</span>
+            <div class="d-flex align-items-center">$<input type="number" id="finalTotalInput" step="0.01" class="form-control fs-4 text-danger fw-bold text-end ms-1" style="width: 150px;" oninput="overrideTotal()"></div>
+          </div>
+          
+          <div class="border-top pt-2 mt-2">
+            <div class="d-flex justify-content-between text-secondary mb-1">
+              <span>成本總金額：</span>
+              <span class="fw-bold">$<span id="totalCostSpan">0.00</span></span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center fs-5 fw-bold text-success">
+              <span>預估利潤：</span>
+              <span>$<span id="totalProfitSpan">0.00</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2 mt-3">
+          <button class="btn btn-primary btn-lg-custom shadow" onclick="submitOrder()">📤 直接送出訂單</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 頁籤 2: 歷史訂單紀錄 (依時間呈現) -->
+    <div id="tabOrderList" style="display:none;">
+      <div class="card p-3">
+        <h5 class="fw-bold mb-3">📋 歷史訂單紀錄 (時間排序)</h5>
+        <div id="ordersListContainer"></div>
+      </div>
+    </div>
+
+    <!-- 頁籤 3: 客戶歷史紀錄 -->
+    <div id="tabCustomerHistory" style="display:none;">
+      <div class="card p-3">
+        <h5 class="fw-bold mb-3">🔍 客戶歷史購買查詢</h5>
+        <select id="historyCustSelect" class="form-select mb-3" onchange="renderCustomerHistory()"><option value="">-- 請選擇客戶 --</option></select>
+        <div id="customerHistoryContainer"></div>
+      </div>
+    </div>
+
+    <!-- 頁籤 4: 暢銷排行榜 -->
+    <div id="tabRanking" style="display:none;">
+      <div class="card p-3">
+        <h5 class="fw-bold mb-3">🏆 洗車用品暢銷排行榜</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle text-center table-auto-fit">
+            <thead class="table-dark"><tr><th>排名</th><th>商品名稱</th><th>總銷量</th><th>總銷售額</th></tr></thead>
+            <tbody id="rankingTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 底部導覽列 -->
+<div id="bottomNav" class="bottom-nav" style="display:none;">
+  <button id="navBtnOrder" class="bottom-nav-btn active" onclick="switchTab('createOrder')">✍️ 出單</button>
+  <button id="navBtnManage" class="bottom-nav-btn" onclick="switchTab('orderList')">📋 歷史訂單</button>
+  <button id="navBtnHistory" class="bottom-nav-btn" onclick="switchTab('customerHistory')">👤 客戶紀錄</button>
+  <button id="navBtnRanking" class="bottom-nav-btn" onclick="switchTab('ranking')">🏆 排行</button>
+</div>
+
+<!-- 單據預覽 Modal 彈窗 (品名單行不換行，極致切齊) -->
+<div class="modal fade modal-compact" id="docPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; margin: 0.25rem auto;">
+    <div class="modal-content" style="border-radius: 12px;">
+      <div class="modal-header border-bottom-0 pb-0">
+        <!-- Bootstrap Nav Tabs -->
+        <ul class="nav nav-tabs w-100" id="docTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold py-1 px-2" id="quotation-tab" data-bs-toggle="tab" data-bs-target="#quotationTabPane" type="button" role="tab" style="font-size: 0.85rem;">📄 報價單 (TO客戶)</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold py-1 px-2" id="purchase-tab" data-bs-toggle="tab" data-bs-target="#purchaseTabPane" type="button" role="tab" style="font-size: 0.85rem;">📦 訂購單 (TO供應商)</button>
+          </li>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="tab-content" id="docTabContent">
+          <!-- Tab 1: 報價單 (隱藏成本與利潤) -->
+          <div class="tab-pane fade show active" id="quotationTabPane" role="tabpanel">
+            <div id="quotationContainer"></div>
+          </div>
+          <!-- Tab 2: 訂購單 (包含成本、小計與利潤) -->
+          <div class="tab-pane fade" id="purchaseTabPane" role="tabpanel">
+            <div id="purchaseContainer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  let currentUser = null, systemData = { products: [], customers: [], orders: [], orderDetails: [] }, cart = [], selectedProduct = null;
+  let previewModal = null;
+
+  // 輔助函式：將數值強制轉為小數點第二位格式字串
+  function fmtNum(val) {
+    const num = parseFloat(val);
+    return isNaN(num) ? "0.00" : num.toFixed(2);
+  }
+
+  window.onload = function() {
+    const savedUrl = localStorage.getItem('gas_api_url');
+    if (savedUrl) document.getElementById('apiUrl').value = savedUrl;
+    previewModal = new bootstrap.Modal(document.getElementById('docPreviewModal'));
+  };
+
+  function saveApiUrl() {
+    localStorage.setItem('gas_api_url', document.getElementById('apiUrl').value.trim());
+    alert('API 網址已儲存！');
+  }
+
+  async function apiCall(data) {
+    const url = localStorage.getItem('gas_api_url');
+    if (!url) { alert('請先設定 API 網址！'); return null; }
+    try {
+      const res = await fetch(url, { method: 'POST', body: JSON.stringify(data) });
+      return await res.json();
+    } catch (e) { alert('連線失敗：' + e.toString()); return null; }
+  }
+
+  async function login() {
+    const u = document.getElementById('username').value, p = document.getElementById('password').value;
+    const res = await apiCall({ action: 'login', username: u, password: p });
+    if (res && res.status === 'success') {
+      currentUser = res.user;
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('mainSection').style.display = 'block';
+      document.getElementById('bottomNav').style.display = 'flex';
+      document.getElementById('userInfo').innerText = currentUser.name;
+      document.getElementById('userRoleBadge').innerText = currentUser.role === 'boss' ? '老闆' : (currentUser.role === 'sales' ? '業務' : '倉管');
+      await loadData();
+    } else { alert(res ? res.message : '登入失敗'); }
+  }
+
+  function logout() { location.reload(); }
+
+  async function loadData() {
+    const res = await apiCall({ action: 'getInitialData' });
+    if (res && res.status === 'success') {
+      systemData = res;
+      renderCustomerDropdowns();
+      renderOrders();
+      renderRanking();
+    }
+  }
+
+  function renderCustomerDropdowns() {
+    const hSelect = document.getElementById('historyCustSelect');
+    hSelect.innerHTML = '<option value="">-- 請選擇客戶 --</option>';
+    systemData.customers.forEach(c => {
+      hSelect.innerHTML += `<option value="${c['客戶編號']}">${c['客戶姓名/公司']}</option>`;
+    });
+  }
+
+  /* 🔍 客戶模糊搜尋 */
+  function filterCustomers() {
+    const input = document.getElementById('custSearchInput').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('custSearchResults');
+    if (!input) { resultsDiv.style.display = 'none'; return; }
+
+    const matches = systemData.customers.filter(c => {
+      const targetText = `${c['客戶姓名/公司']} ${c['電話']} ${c['送貨地址']}`.toLowerCase();
+      return targetText.includes(input);
+    });
+
+    if (matches.length > 0) {
+      resultsDiv.innerHTML = matches.map(c => `
+        <div class="search-item" onclick="selectCustomer('${c['客戶編號']}')">
+          <strong>${c['客戶姓名/公司']}</strong> <span class="badge bg-secondary">${c['電話']}</span><br>
+          <small class="text-muted">${c['送貨地址']}</small>
+        </div>`).join('');
+      resultsDiv.style.display = 'block';
+    } else {
+      resultsDiv.innerHTML = '<div class="search-item text-muted">查無此客戶，可直接在下方手動輸入建立</div>';
+      resultsDiv.style.display = 'block';
+    }
+  }
+
+  function selectCustomer(cId) {
+    const cust = systemData.customers.find(c => c['客戶編號'] === cId);
+    if (cust) {
+      document.getElementById('custName').value = cust['客戶姓名/公司'];
+      document.getElementById('custPhone').value = cust['電話'];
+      document.getElementById('custAddr').value = cust['送貨地址'];
+      document.getElementById('custSearchResults').style.display = 'none';
+      document.getElementById('custSearchInput').value = '';
+    }
+  }
+
+  /* 🔍 商品模糊搜尋 */
+  function filterProducts() {
+    const input = document.getElementById('prodSearchInput').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('searchResults');
+    if (!input) { resultsDiv.style.display = 'none'; return; }
+    const keywords = input.replace(/4l/g, '4000ml').split(/\s+/);
+    const matches = systemData.products.filter(p => {
+      const targetText = `${p['商品名稱']} ${p['規格容量']} ${p['商品編號']}`.toLowerCase();
+      return keywords.every(kw => targetText.includes(kw));
+    });
+    if (matches.length > 0) {
+      resultsDiv.innerHTML = matches.map(p => `
+        <div class="search-item" onclick="selectProduct('${p['商品編號']}')">
+          <strong>${p['商品名稱']}</strong> <span class="badge bg-secondary">${p['規格容量']}</span><br>
+          <small class="text-danger fw-bold">售價:$${fmtNum(p['單價'])}</small> | <small class="text-muted">成本:$${fmtNum(p['成本']||0)}</small>
+        </div>`).join('');
+      resultsDiv.style.display = 'block';
+    } else { resultsDiv.innerHTML = '<div class="search-item text-muted">無相符商品</div>'; resultsDiv.style.display = 'block'; }
+  }
+
+  function selectProduct(pId) {
+    selectedProduct = systemData.products.find(p => p['商品編號'] === pId);
+    if (selectedProduct) {
+      document.getElementById('selectedProdText').innerText = `${selectedProduct['商品名稱']} (${selectedProduct['規格容量']}) - 售價:$${fmtNum(selectedProduct['單價'])} / 成本:$${fmtNum(selectedProduct['成本']||0)}`;
+      document.getElementById('selectedProdCard').style.display = 'block';
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('prodSearchInput').value = '';
+    }
+  }
+
+  function addItem() {
+    if (!selectedProduct) return alert('請先選擇商品！');
+    const qty = parseInt(document.getElementById('prodQty').value);
+    if (qty <= 0) return alert('數量必須大於 0');
+    cart.push({ 
+      productId: selectedProduct['商品編號'], 
+      productName: selectedProduct['商品名稱'], 
+      spec: selectedProduct['規格容量'], 
+      price: parseFloat(selectedProduct['單價']), 
+      cost: parseFloat(selectedProduct['成本'] || 0),
+      qty: qty 
+    });
+    selectedProduct = null;
+    document.getElementById('selectedProdCard').style.display = 'none';
+    renderCart();
+  }
+
+  function renderCart() {
+    const tbody = document.getElementById('cartTable');
+    tbody.innerHTML = '';
+    let origTotal = 0;
+    let costTotal = 0;
+
+    cart.forEach((item, index) => {
+      const subtotalPrice = item.price * item.qty;
+      const subtotalCost = item.cost * item.qty;
+      origTotal += subtotalPrice;
+      costTotal += subtotalCost;
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="text-start nowrap-cell"><strong>${item.productName}</strong><br><small class="text-muted">${item.spec}</small></td>
+          <td class="nowrap-cell">$${fmtNum(item.price)}</td>
+          <td class="text-secondary nowrap-cell">$${fmtNum(item.cost)}</td>
+          <td class="nowrap-cell">${item.qty}</td>
+          <td class="fw-bold nowrap-cell">$${fmtNum(subtotalPrice)}</td>
+          <td class="text-secondary nowrap-cell">$${fmtNum(subtotalCost)}</td>
+          <td><button class="btn btn-sm btn-danger px-2" onclick="cart.splice(${index},1);renderCart();">刪</button></td>
+        </tr>`;
+    });
+
+    document.getElementById('originalTotal').innerText = fmtNum(origTotal);
+    document.getElementById('totalCostSpan').innerText = fmtNum(costTotal);
+    calculateTotal();
+  }
+
+  function calculateTotal() {
+    const orig = parseFloat(document.getElementById('originalTotal').innerText) || 0;
+    const rate = parseFloat(document.getElementById('discountRate').value) || 0.90;
+    const finalVal = orig * rate;
+    document.getElementById('finalTotalInput').value = fmtNum(finalVal);
+    updateProfit(finalVal);
+  }
+
+  function overrideTotal() {
+    const orig = parseFloat(document.getElementById('originalTotal').innerText) || 0;
+    const finalVal = parseFloat(document.getElementById('finalTotalInput').value) || 0;
+    if (orig > 0) document.getElementById('discountRate').value = (finalVal / orig).toFixed(2);
+    updateProfit(finalVal);
+  }
+
+  function updateProfit(finalVal) {
+    const costTotal = parseFloat(document.getElementById('totalCostSpan').innerText) || 0;
+    const profit = finalVal - costTotal;
+    const profitSpan = document.getElementById('totalProfitSpan');
+    profitSpan.innerText = fmtNum(profit);
+    profitSpan.parentElement.className = profit >= 0 ? 'text-success' : 'text-danger';
+  }
+
+  /* 送出訂單：直接送出並跳出彈窗 */
+  async function submitOrder() {
+    if (cart.length === 0) return alert('購物車內沒有商品！');
+    if (!document.getElementById('custName').value) return alert('請填寫客戶姓名！');
+
+    const orderData = {
+      customerName: document.getElementById('custName').value,
+      phone: document.getElementById('custPhone').value,
+      address: document.getElementById('custAddr').value,
+      originalTotal: parseFloat(document.getElementById('originalTotal').innerText),
+      discountRate: parseFloat(document.getElementById('discountRate').value),
+      finalTotal: parseFloat(document.getElementById('finalTotalInput').value),
+      salesName: currentUser.name, items: cart
+    };
+
+    const res = await apiCall({ action: 'createOrder', order: orderData });
+    if (res && res.status === 'success') {
+      alert('✅ 訂單已建立！單號：' + res.orderId);
+      
+      const fullOrderObj = {
+        '訂單編號': res.orderId,
+        '建立日期': new Date().toISOString(),
+        '客戶名稱': orderData.customerName,
+        '電話': orderData.phone,
+        '送貨地址': orderData.address,
+        '原始總金額': orderData.originalTotal,
+        '折扣率': orderData.discountRate,
+        '應收總金額': orderData.finalTotal,
+        '總成本': parseFloat(document.getElementById('totalCostSpan').innerText),
+        '總利潤': parseFloat(document.getElementById('totalProfitSpan').innerText),
+        'items': [...cart]
+      };
+
+      cart = []; 
+      renderCart(); 
+      await loadData();
+      
+      showDocModal(fullOrderObj);
+    }
+  }
+
+  /* 開啟彈窗並帶入單據數據 (品名單行不換行、完美貼合一頁截圖) */
+  function showDocModal(orderObj) {
+    let items = orderObj.items;
+    if (!items) {
+      items = systemData.orderDetails.filter(d => d['訂單編號'] === orderObj['訂單編號']).map(d => ({
+        productName: d['商品名稱'],
+        qty: d['數量'],
+        price: d['單價'],
+        cost: d['成本'] || 0
+      }));
+    }
+
+    const dateStr = orderObj['建立日期'] ? new Date(orderObj['建立日期']).toLocaleDateString() : new Date().toLocaleDateString();
+
+    // 1. 報價單 (TO客戶)
+    document.getElementById('quotationContainer').innerHTML = `
+      <div class="modal-doc-header">
+        <div class="row g-1">
+          <div class="col-7"><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
+          <div class="col-5 text-end"><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
+          <div class="col-7"><strong>電話：</strong>${orderObj['電話']||''}</div>
+          <div class="col-5 text-end"><strong>日期：</strong>${dateStr}</div>
+          <div class="col-12"><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
+        </div>
+      </div>
+      <table class="table table-bordered align-middle doc-table-strict">
+        <thead class="table-light">
+          <tr><th style="width: 46%;">品名</th><th style="width: 14%;">數</th><th style="width: 20%;">單價</th><th style="width: 20%;">小計</th></tr>
+        </thead>
+        <tbody>
+          ${items.map(i => {
+            const q = i.qty || i['數量'];
+            const p = i.price || i['單價'];
+            return `
+            <tr>
+              <td><span class="p-name-no-wrap">${i.productName || i['商品名稱']}</span></td>
+              <td>${q}</td>
+              <td>${fmtNum(p)}</td>
+              <td>${fmtNum(q * p)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      <div class="doc-summary-box text-end border-top pt-1">
+        <div><small class="text-muted">原價：$${fmtNum(orderObj['原始總金額'])} | 折扣：${orderObj['折扣率']}</small></div>
+        <div class="fs-6 fw-bold text-danger">總計：$${fmtNum(orderObj['應收總金額'])}</div>
+      </div>
+    `;
+
+    // 2. 訂購單 (TO供應商) - 嚴格分配 7 欄寬度，產品名稱保持單行不換行
+    let costSum = 0;
+    const purchaseRows = items.map(i => {
+      const q = i.qty || i['數量'];
+      const p = i.price || i['單價'];
+      const c = i.cost || i['成本'] || 0;
+      const subPrice = q * p;
+      const subCost = q * c;
+      const subProfit = subPrice - subCost;
+      costSum += subCost;
+      return `
+        <tr>
+          <td><span class="p-name-no-wrap">${i.productName || i['商品名稱']}</span></td>
+          <td>${q}</td>
+          <td>${fmtNum(p)}</td>
+          <td>${fmtNum(subPrice)}</td>
+          <td>${fmtNum(c)}</td>
+          <td>${fmtNum(subCost)}</td>
+          <td class="text-success fw-bold">${fmtNum(subProfit)}</td>
+        </tr>`;
+    }).join('');
+
+    const totalProfit = orderObj['總利潤'] !== undefined ? orderObj['總利潤'] : (orderObj['應收總金額'] - costSum);
+
+    document.getElementById('purchaseContainer').innerHTML = `
+      <div class="modal-doc-header">
+        <div class="row g-1">
+          <div class="col-7"><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
+          <div class="col-5 text-end"><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
+          <div class="col-7"><strong>電話：</strong>${orderObj['電話']||''}</div>
+          <div class="col-5 text-end"><strong>日期：</strong>${dateStr}</div>
+          <div class="col-12"><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
+        </div>
+      </div>
+      <table class="table table-bordered align-middle doc-table-strict">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 25%;">品名</th>
+            <th style="width: 8%;">數</th>
+            <th style="width: 13%;">單價</th>
+            <th style="width: 14%;">小計</th>
+            <th style="width: 13%;">成本</th>
+            <th style="width: 14%;">成小</th>
+            <th style="width: 13%;">利潤</th>
+          </tr>
+        </thead>
+        <tbody>${purchaseRows}</tbody>
+      </table>
+      <div class="doc-summary-box text-end border-top pt-1">
+        <div><small class="text-muted">原價：$${fmtNum(orderObj['原始總金額'])} | 成本：$${fmtNum(orderObj['總成本'] || costSum)}</small></div>
+        <div><small class="text-muted">折後實收：$${fmtNum(orderObj['應收總金額'])}</small></div>
+        <div class="fs-6 fw-bold text-success">總利潤：$${fmtNum(totalProfit)}</div>
+      </div>
+    `;
+
+    const firstTab = new bootstrap.Tab(document.getElementById('quotation-tab'));
+    firstTab.show();
+    previewModal.show();
+  }
+
+  /* 歷史訂單紀錄：按時間排序呈現 */
+  function renderOrders() {
+    const container = document.getElementById('ordersListContainer');
+    container.innerHTML = '';
+    
+    const sortedOrders = [...systemData.orders].sort((a, b) => new Date(b['建立日期']) - new Date(a['建立日期']));
+
+    sortedOrders.forEach((o, index) => {
+      const details = systemData.orderDetails.filter(d => d['訂單編號'] === o['訂單編號']);
+      const itemSummary = details.map(d => `${d['商品名稱']} x${d['數量']}`).join(', ') || '無明細資料';
+
+      container.innerHTML += `
+        <div class="card p-3 border mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>${o['訂單編號']}</strong>
+            <small class="text-muted">${new Date(o['建立日期']).toLocaleString()}</small>
+          </div>
+          <div><strong>客戶：</strong>${o['客戶名稱']} (${o['電話']||'無電話'})</div>
+          <div class="text-muted"><small><strong>購買內容：</strong>${itemSummary}</small></div>
+          <div class="mt-1">
+            <strong>金額：</strong><span class="text-danger fw-bold">$${fmtNum(o['應收總金額'])}</span> 
+            <small class="text-muted">(原價:$${fmtNum(o['原始總金額'])} / 折扣:${o['折扣率']})</small>
+          </div>
+          <div class="bg-light p-2 rounded mt-2 border d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-muted">財務摘要：</small>
+              <span>成本: $${fmtNum(o['總成本'] || 0)}</span> | 
+              <strong class="${(o['總利潤'] >= 0) ? 'text-success' : 'text-danger'}">利潤: $${fmtNum(o['總利潤'] || 0)}</strong>
+            </div>
+            <button class="btn btn-sm btn-outline-primary fw-bold" onclick='showDocModal(${JSON.stringify(o)})'>檢視單據</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  function renderCustomerHistory() {
+    const cId = document.getElementById('historyCustSelect').value;
+    const container = document.getElementById('customerHistoryContainer');
+    container.innerHTML = '';
+    if (!cId) return;
+
+    const custOrders = systemData.orders.filter(o => o['客戶編號'] === cId);
+    if (custOrders.length === 0) { container.innerHTML = '<div class="alert alert-warning">該客戶尚無交易紀錄</div>'; return; }
+
+    custOrders.forEach(o => {
+      const details = systemData.orderDetails.filter(d => d['訂單編號'] === o['訂單編號']);
+      let itemsHtml = details.map(d => `<li><span class="nowrap-cell">${d['商品名稱']}</span> (${d['規格']||''}) x ${d['數量']} = $${fmtNum(d['品項原價小計'])}</li>`).join('');
+      container.innerHTML += `
+        <div class="card p-3 border mb-2">
+          <div class="d-flex justify-content-between"><strong>單號: ${o['訂單編號']}</strong><span class="badge bg-secondary">${o['訂單狀態']||'已建立'}</span></div>
+          <div><small class="text-muted">日期: ${new Date(o['建立日期']).toLocaleDateString()}</small></div>
+          <hr class="my-1">
+          <ul class="mb-1 ps-3">${itemsHtml}</ul>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <button class="btn btn-sm btn-outline-primary" onclick='showDocModal(${JSON.stringify(o)})'>檢視單據</button>
+            <div class="fw-bold text-danger">實收總計: $${fmtNum(o['應收總金額'])}</div>
+          </div>
+        </div>`;
+    });
+  }
+
+  function renderRanking() {
+    const rankingTable = document.getElementById('rankingTable');
+    rankingTable.innerHTML = '';
+    const stats = {};
+
+    systemData.orderDetails.forEach(d => {
+      const name = d['商品名稱'];
+      if (!stats[name]) stats[name] = { qty: 0, total: 0 };
+      stats[name].qty += Number(d['數量']);
+      stats[name].total += Number(d['品項原價小計']);
+    });
+
+    const sorted = Object.keys(stats).map(k => ({ name: k, qty: stats[k].qty, total: stats[k].total })).sort((a,b) => b.qty - a.qty);
+    sorted.forEach((item, index) => {
+      rankingTable.innerHTML += `<tr><td>${index + 1}</td><td class="nowrap-cell text-start"><strong>${item.name}</strong></td><td>${item.qty}</td><td>$${fmtNum(item.total)}</td></tr>`;
+    });
+  }
+
+  function switchTab(tabName) {
+    document.getElementById('tabCreateOrder').style.display = tabName === 'createOrder' ? 'block' : 'none';
+    document.getElementById('tabOrderList').style.display = tabName === 'orderList' ? 'block' : 'none';
+    document.getElementById('tabCustomerHistory').style.display = tabName === 'customerHistory' ? 'block' : 'none';
+    document.getElementById('tabRanking').style.display = tabName === 'ranking' ? 'block' : 'none';
+
+    document.getElementById('navBtnOrder').classList.toggle('active', tabName === 'createOrder');
+    document.getElementById('navBtnManage').classList.toggle('active', tabName === 'orderList');
+    document.getElementById('navBtnHistory').classList.toggle('active', tabName === 'customerHistory');
+    document.getElementById('navBtnRanking').classList.toggle('active', tabName === 'ranking');
+  }
+</script>
+</body>
+</html>
