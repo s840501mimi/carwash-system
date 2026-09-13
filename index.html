@@ -18,17 +18,15 @@
     .bottom-nav-btn { flex: 1; border: none; background: none; font-size: 0.85rem; font-weight: bold; color: #6c757d; }
     .bottom-nav-btn.active { color: #0d6efd; background-color: #e7f1ff; }
     
-    /* 自訂表格通用樣式 */
     .table-auto-fit { table-layout: auto; width: 100%; }
     .table-auto-fit th, .table-auto-fit td { vertical-align: middle; }
     .nowrap-cell { white-space: nowrap !important; word-break: keep-all !important; }
 
-    /* 📱 專為手機一頁截圖優化的單據彈窗樣式 */
-    .modal-compact .modal-body { padding: 6px !important; }
+    /* 📱 單據彈窗樣式 */
+    .modal-compact .modal-body { padding: 8px !important; }
     .modal-compact .modal-header { padding: 6px 10px !important; }
-    .modal-doc-header { background: #f8f9fa; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 0.78rem; line-height: 1.3; }
+    .modal-doc-header { background: #f8f9fa; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 0.78rem; line-height: 1.4; }
     
-    /* 表格基礎佈局：嚴格鎖定寬度，不產生滾動條 */
     .doc-table-strict { 
       font-size: 0.72rem !important; 
       margin-bottom: 4px !important; 
@@ -42,7 +40,6 @@
       white-space: nowrap !important; 
     }
 
-    /* 品名欄位：強制不換行，過長時顯示省略號 (...) */
     .doc-table-strict .p-name-no-wrap { 
       text-align: left !important; 
       white-space: nowrap !important; 
@@ -51,7 +48,7 @@
       display: block; 
       width: 100%; 
     }
-    
+
     .doc-summary-box { font-size: 0.8rem; line-height: 1.25; padding-top: 4px; }
   </style>
 </head>
@@ -89,7 +86,6 @@
   <!-- 主要操作區 -->
   <div id="mainSection" style="display:none;">
     
-    <!-- 頂樓用戶資訊 -->
     <div class="card p-3 d-flex flex-row justify-content-between align-items-center">
       <div><span id="userRoleBadge" class="badge bg-primary fs-6 me-1"></span><strong id="userInfo" class="fs-5"></strong></div>
       <button class="btn btn-outline-danger btn-sm px-3" style="border-radius: 8px;" onclick="logout()">登出</button>
@@ -97,7 +93,6 @@
 
     <!-- 頁籤 1: 業務出單 -->
     <div id="tabCreateOrder">
-      <!-- 1. 客戶資訊 -->
       <div class="card p-3" style="position: relative;">
         <h5 class="fw-bold mb-3">👤 1. 客戶資訊</h5>
         <div class="mb-2 position-relative">
@@ -109,7 +104,6 @@
         <input type="text" id="custAddr" class="form-control" placeholder="送貨地址">
       </div>
 
-      <!-- 2. 選擇商品 -->
       <div class="card p-3" style="position: relative;">
         <h5 class="fw-bold mb-3">🧼 2. 選擇商品 (模糊搜尋)</h5>
         <div class="mb-2 position-relative">
@@ -126,7 +120,6 @@
           <div class="col-7"><button class="btn btn-success w-100 btn-action" onclick="addItem()">＋ 加入項目</button></div>
         </div>
 
-        <!-- 商品購物車 -->
         <div class="table-responsive">
           <table class="table table-bordered align-middle text-center mt-2 table-auto-fit" style="font-size: 0.95rem;">
             <thead class="table-light">
@@ -144,7 +137,6 @@
           </table>
         </div>
 
-        <!-- 計算區 -->
         <div class="bg-light p-3 rounded-3 mt-2">
           <div class="d-flex justify-content-between mb-2"><span>原價總金額：</span><span class="fw-bold">$<span id="originalTotal">0.00</span></span></div>
           <div class="row g-2 align-items-center mb-2">
@@ -174,7 +166,7 @@
       </div>
     </div>
 
-    <!-- 頁籤 2: 歷史訂單紀錄 (依時間呈現) -->
+    <!-- 頁籤 2: 歷史訂單紀錄 -->
     <div id="tabOrderList" style="display:none;">
       <div class="card p-3">
         <h5 class="fw-bold mb-3">📋 歷史訂單紀錄 (時間排序)</h5>
@@ -215,29 +207,28 @@
   <button id="navBtnRanking" class="bottom-nav-btn" onclick="switchTab('ranking')">🏆 排行</button>
 </div>
 
-<!-- 單據預覽 Modal 彈窗 (品名單行不換行，極致切齊) -->
+<!-- 單據預覽 Modal 彈窗 -->
 <div class="modal fade modal-compact" id="docPreviewModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" style="max-width: 480px; margin: 0.25rem auto;">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 500px; margin: 0.25rem auto;">
     <div class="modal-content" style="border-radius: 12px;">
       <div class="modal-header border-bottom-0 pb-0">
-        <!-- Bootstrap Nav Tabs -->
         <ul class="nav nav-tabs w-100" id="docTab" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold py-1 px-2" id="quotation-tab" data-bs-toggle="tab" data-bs-target="#quotationTabPane" type="button" role="tab" style="font-size: 0.85rem;">📄 報價單 (TO客戶)</button>
+            <button class="nav-link active fw-bold py-1 px-2" id="quotation-tab" data-bs-toggle="tab" data-bs-target="#quotationTabPane" type="button" role="tab" style="font-size: 0.85rem;">📄 報價單</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold py-1 px-2" id="purchase-tab" data-bs-toggle="tab" data-bs-target="#purchaseTabPane" type="button" role="tab" style="font-size: 0.85rem;">📦 訂購單 (TO供應商)</button>
+            <button class="nav-link fw-bold py-1 px-2" id="purchase-tab" data-bs-toggle="tab" data-bs-target="#purchaseTabPane" type="button" role="tab" style="font-size: 0.85rem;">📦 訂購單</button>
           </li>
         </ul>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="tab-content" id="docTabContent">
-          <!-- Tab 1: 報價單 (隱藏成本與利潤) -->
+          <!-- Tab 1: 報價單 -->
           <div class="tab-pane fade show active" id="quotationTabPane" role="tabpanel">
             <div id="quotationContainer"></div>
           </div>
-          <!-- Tab 2: 訂購單 (包含成本、小計與利潤) -->
+          <!-- Tab 2: 訂購單 -->
           <div class="tab-pane fade" id="purchaseTabPane" role="tabpanel">
             <div id="purchaseContainer"></div>
           </div>
@@ -252,10 +243,80 @@
   let currentUser = null, systemData = { products: [], customers: [], orders: [], orderDetails: [] }, cart = [], selectedProduct = null;
   let previewModal = null;
 
-  // 輔助函式：將數值強制轉為小數點第二位格式字串
   function fmtNum(val) {
     const num = parseFloat(val);
     return isNaN(num) ? "0.00" : num.toFixed(2);
+  }
+
+  // 🛠【全通用物件正規化解析器】徹底解決 GAS 欄位名稱對不上問題
+  function parseDetailItem(d) {
+    const name = d.productName || d['商品名稱'] || d['品名'] || d['Name'] || '';
+    const id = d.productId || d['商品編號'] || d['Code'] || '';
+    
+    // 找數量 (相容: qty, 數量, Qty, num)
+    let rawQty = d.qty !== undefined ? d.qty : (d['數量'] || d['Qty'] || d['num'] || 1);
+    let qty = parseInt(rawQty, 10);
+    if (isNaN(qty) || qty <= 0) qty = 1;
+
+    // 找單價 (相容: price, 單價, 售價, Price)
+    let rawPrice = d.price !== undefined ? d.price : (d['單價'] || d['售價'] || d['Price'] || 0);
+    let price = parseFloat(rawPrice);
+    if (isNaN(price)) price = 0;
+
+    // 防呆校正：若 GAS 傳過來的數量異常龐大（如 500），代表欄位名稱混淆讀成小計了，反推計算
+    const subtotalPrice = parseFloat(d['品項原價小計'] || d['小計'] || d['subtotal'] || 0);
+    if (qty > 50 && price > 0 && subtotalPrice > 0) {
+      let calcQty = Math.round(subtotalPrice / price);
+      if (calcQty > 0 && calcQty < 50) qty = calcQty;
+    }
+
+    // 找成本 (相容: cost, 成本, 進貨成本, 單項成本)
+    let rawCost = d.cost !== undefined ? d.cost : (d['成本'] || d['進貨成本'] || d['單項成本'] || d['Cost'] || 0);
+    let cost = parseFloat(rawCost);
+    
+    // 歷史紀錄沒記成本，自動對照 Product 庫存主表
+    if (isNaN(cost) || cost === 0) {
+      const matched = systemData.products.find(p => 
+        (id && String(p['商品編號']).trim() === String(id).trim()) ||
+        (name && String(p['商品名稱']).trim() === String(name).trim())
+      );
+      if (matched) {
+        cost = parseFloat(matched['成本'] || matched['進貨成本'] || 0);
+      }
+    }
+    if (isNaN(cost)) cost = 0;
+
+    return {
+      productName: name,
+      productId: id,
+      qty: qty,
+      price: price,
+      cost: cost
+    };
+  }
+
+  // 🧮【計算整筆歷史訂單的總成本與利潤】
+  function calculateOrderFinancials(o) {
+    const rawDetails = systemData.orderDetails.filter(d => String(d['訂單編號']).trim() === String(o['訂單編號']).trim());
+    
+    let totalCost = 0;
+    let detailItems = [];
+
+    if (rawDetails.length > 0) {
+      detailItems = rawDetails.map(d => parseDetailItem(d));
+      totalCost = detailItems.reduce((sum, item) => sum + (item.qty * item.cost), 0);
+    }
+
+    // 若從明細算不出成本，最後使用主表欄位備援
+    if (totalCost === 0) {
+      totalCost = parseFloat(o['總成本'] || o['成本總計'] || o['cost'] || 0);
+    }
+
+    // 折後實收金額 (相容: 應收總金額, 折後總價, finalTotal)
+    const finalTotal = parseFloat(o['應收總金額'] || o['折後總價'] || o['finalTotal'] || 0);
+    const profit = finalTotal - totalCost;
+
+    return { totalCost, profit, detailItems };
   }
 
   window.onload = function() {
@@ -312,7 +373,6 @@
     });
   }
 
-  /* 🔍 客戶模糊搜尋 */
   function filterCustomers() {
     const input = document.getElementById('custSearchInput').value.trim().toLowerCase();
     const resultsDiv = document.getElementById('custSearchResults');
@@ -347,7 +407,6 @@
     }
   }
 
-  /* 🔍 商品模糊搜尋 */
   function filterProducts() {
     const input = document.getElementById('prodSearchInput').value.trim().toLowerCase();
     const resultsDiv = document.getElementById('searchResults');
@@ -361,7 +420,7 @@
       resultsDiv.innerHTML = matches.map(p => `
         <div class="search-item" onclick="selectProduct('${p['商品編號']}')">
           <strong>${p['商品名稱']}</strong> <span class="badge bg-secondary">${p['規格容量']}</span><br>
-          <small class="text-danger fw-bold">售價:$${fmtNum(p['單價'])}</small> | <small class="text-muted">成本:$${fmtNum(p['成本']||0)}</small>
+          <small class="text-danger fw-bold">售價:$${fmtNum(p['單價'])}</small> | <small class="text-muted">成本:$${fmtNum(p['成本'] || p['進貨成本'] || 0)}</small>
         </div>`).join('');
       resultsDiv.style.display = 'block';
     } else { resultsDiv.innerHTML = '<div class="search-item text-muted">無相符商品</div>'; resultsDiv.style.display = 'block'; }
@@ -370,7 +429,8 @@
   function selectProduct(pId) {
     selectedProduct = systemData.products.find(p => p['商品編號'] === pId);
     if (selectedProduct) {
-      document.getElementById('selectedProdText').innerText = `${selectedProduct['商品名稱']} (${selectedProduct['規格容量']}) - 售價:$${fmtNum(selectedProduct['單價'])} / 成本:$${fmtNum(selectedProduct['成本']||0)}`;
+      const costVal = parseFloat(selectedProduct['成本'] || selectedProduct['進貨成本'] || 0);
+      document.getElementById('selectedProdText').innerText = `${selectedProduct['商品名稱']} (${selectedProduct['規格容量']}) - 售價:$${fmtNum(selectedProduct['單價'])} / 成本:$${fmtNum(costVal)}`;
       document.getElementById('selectedProdCard').style.display = 'block';
       document.getElementById('searchResults').style.display = 'none';
       document.getElementById('prodSearchInput').value = '';
@@ -379,14 +439,17 @@
 
   function addItem() {
     if (!selectedProduct) return alert('請先選擇商品！');
-    const qty = parseInt(document.getElementById('prodQty').value);
-    if (qty <= 0) return alert('數量必須大於 0');
+    const qty = parseInt(document.getElementById('prodQty').value, 10);
+    if (isNaN(qty) || qty <= 0) return alert('數量必須大於 0');
+    
+    const costVal = parseFloat(selectedProduct['成本'] || selectedProduct['進貨成本'] || 0);
+
     cart.push({ 
       productId: selectedProduct['商品編號'], 
       productName: selectedProduct['商品名稱'], 
       spec: selectedProduct['規格容量'], 
       price: parseFloat(selectedProduct['單價']), 
-      cost: parseFloat(selectedProduct['成本'] || 0),
+      cost: costVal,
       qty: qty 
     });
     selectedProduct = null;
@@ -446,7 +509,6 @@
     profitSpan.parentElement.className = profit >= 0 ? 'text-success' : 'text-danger';
   }
 
-  /* 送出訂單：直接送出並跳出彈窗 */
   async function submitOrder() {
     if (cart.length === 0) return alert('購物車內沒有商品！');
     if (!document.getElementById('custName').value) return alert('請填寫客戶姓名！');
@@ -474,8 +536,6 @@
         '原始總金額': orderData.originalTotal,
         '折扣率': orderData.discountRate,
         '應收總金額': orderData.finalTotal,
-        '總成本': parseFloat(document.getElementById('totalCostSpan').innerText),
-        '總利潤': parseFloat(document.getElementById('totalProfitSpan').innerText),
         'items': [...cart]
       };
 
@@ -487,107 +547,109 @@
     }
   }
 
-  /* 開啟彈窗並帶入單據數據 (品名單行不換行、完美貼合一頁截圖) */
+  // 📄【檢視單據 Modal 彈窗核心修正】
   function showDocModal(orderObj) {
-    let items = orderObj.items;
-    if (!items) {
-      items = systemData.orderDetails.filter(d => d['訂單編號'] === orderObj['訂單編號']).map(d => ({
-        productName: d['商品名稱'],
-        qty: d['數量'],
-        price: d['單價'],
-        cost: d['成本'] || 0
-      }));
+    let items = [];
+    if (orderObj.items && orderObj.items.length > 0) {
+      items = orderObj.items.map(i => parseDetailItem(i));
+    } else {
+      const rawDetails = systemData.orderDetails.filter(d => String(d['訂單編號']).trim() === String(orderObj['訂單編號']).trim());
+      items = rawDetails.map(d => parseDetailItem(d));
     }
 
     const dateStr = orderObj['建立日期'] ? new Date(orderObj['建立日期']).toLocaleDateString() : new Date().toLocaleDateString();
+    const origTotal = parseFloat(orderObj['原始總金額'] || orderObj['originalTotal'] || 0);
+    const discountRate = parseFloat(orderObj['折扣率'] || orderObj['discountRate'] || 1.0);
+    const finalTotal = parseFloat(orderObj['應收總金額'] || orderObj['finalTotal'] || 0);
 
-    // 1. 報價單 (TO客戶)
+    // 1. 報價單 (顯示給客戶)
     document.getElementById('quotationContainer').innerHTML = `
+      <h3 class="text-center fw-bold mb-2 text-primary" style="letter-spacing: 4px;">報價單</h3>
       <div class="modal-doc-header">
-        <div class="row g-1">
-          <div class="col-7"><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
-          <div class="col-5 text-end"><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
-          <div class="col-7"><strong>電話：</strong>${orderObj['電話']||''}</div>
-          <div class="col-5 text-end"><strong>日期：</strong>${dateStr}</div>
-          <div class="col-12"><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
-        </div>
+        <div><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
+        <div><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
+        <div><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
+        <div><strong>電話：</strong>${orderObj['電話']||''}</div>
+        <div><strong>日期：</strong>${dateStr}</div>
       </div>
       <table class="table table-bordered align-middle doc-table-strict">
         <thead class="table-light">
           <tr><th style="width: 46%;">品名</th><th style="width: 14%;">數</th><th style="width: 20%;">單價</th><th style="width: 20%;">小計</th></tr>
         </thead>
         <tbody>
-          ${items.map(i => {
-            const q = i.qty || i['數量'];
-            const p = i.price || i['單價'];
-            return `
+          ${items.map(i => `
             <tr>
-              <td><span class="p-name-no-wrap">${i.productName || i['商品名稱']}</span></td>
-              <td>${q}</td>
-              <td>${fmtNum(p)}</td>
-              <td>${fmtNum(q * p)}</td>
-            </tr>`;
-          }).join('')}
+              <td><span class="p-name-no-wrap">${i.productName}</span></td>
+              <td>${i.qty}</td>
+              <td>${fmtNum(i.price)}</td>
+              <td>${fmtNum(i.qty * i.price)}</td>
+            </tr>`).join('')}
         </tbody>
       </table>
       <div class="doc-summary-box text-end border-top pt-1">
-        <div><small class="text-muted">原價：$${fmtNum(orderObj['原始總金額'])} | 折扣：${orderObj['折扣率']}</small></div>
-        <div class="fs-6 fw-bold text-danger">總計：$${fmtNum(orderObj['應收總金額'])}</div>
+        <div><small class="text-muted">原價：$${fmtNum(origTotal)} | 折扣：${discountRate}</small></div>
+        <div class="fs-6 fw-bold text-danger">應收總計：$${fmtNum(finalTotal)}</div>
       </div>
     `;
 
-    // 2. 訂購單 (TO供應商) - 嚴格分配 7 欄寬度，產品名稱保持單行不換行
-    let costSum = 0;
-    const purchaseRows = items.map(i => {
-      const q = i.qty || i['數量'];
-      const p = i.price || i['單價'];
-      const c = i.cost || i['成本'] || 0;
-      const subPrice = q * p;
-      const subCost = q * c;
+    // 2. 訂購單 (內部對帳用 - 包含成本與利潤)
+    let purchaseCostTotal = 0;
+    let purchaseRows = items.map(i => {
+      const subPrice = i.qty * i.price;
+      const subCost = i.qty * i.cost;
       const subProfit = subPrice - subCost;
-      costSum += subCost;
+      purchaseCostTotal += subCost;
       return `
         <tr>
-          <td><span class="p-name-no-wrap">${i.productName || i['商品名稱']}</span></td>
-          <td>${q}</td>
-          <td>${fmtNum(p)}</td>
-          <td>${fmtNum(subPrice)}</td>
-          <td>${fmtNum(c)}</td>
-          <td>${fmtNum(subCost)}</td>
+          <td><span class="p-name-no-wrap">${i.productName}</span></td>
+          <td>${i.qty}</td>
+          <td>${fmtNum(i.price)}</td>
+          <td class="fw-bold">${fmtNum(subPrice)}</td>
+          <td class="text-secondary">${fmtNum(i.cost)}</td>
+          <td class="text-secondary">${fmtNum(subCost)}</td>
           <td class="text-success fw-bold">${fmtNum(subProfit)}</td>
         </tr>`;
     }).join('');
 
-    const totalProfit = orderObj['總利潤'] !== undefined ? orderObj['總利潤'] : (orderObj['應收總金額'] - costSum);
+    const purchaseProfitTotal = finalTotal - purchaseCostTotal;
 
     document.getElementById('purchaseContainer').innerHTML = `
-      <div class="modal-doc-header">
-        <div class="row g-1">
-          <div class="col-7"><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
-          <div class="col-5 text-end"><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
-          <div class="col-7"><strong>電話：</strong>${orderObj['電話']||''}</div>
-          <div class="col-5 text-end"><strong>日期：</strong>${dateStr}</div>
-          <div class="col-12"><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
-        </div>
+      <h3 class="text-center fw-bold mb-2 text-dark" style="letter-spacing: 4px;">訂購單</h3>
+      
+      <div class="modal-doc-header" style="max-width: 63%;">
+        <div><strong>單號：</strong>${orderObj['訂單編號']||''}</div>
+        <div><strong>客戶：</strong>${orderObj['客戶名稱']||''}</div>
+        <div><strong>地址：</strong>${orderObj['送貨地址']||''}</div>
+        <div><strong>電話：</strong>${orderObj['電話']||''}</div>
+        <div><strong>日期：</strong>${dateStr}</div>
       </div>
+
       <table class="table table-bordered align-middle doc-table-strict">
         <thead class="table-light">
           <tr>
             <th style="width: 25%;">品名</th>
             <th style="width: 8%;">數</th>
-            <th style="width: 13%;">單價</th>
-            <th style="width: 14%;">小計</th>
-            <th style="width: 13%;">成本</th>
-            <th style="width: 14%;">成小</th>
-            <th style="width: 13%;">利潤</th>
+            <th style="width: 14%;">單價</th>
+            <th style="width: 16%;">小計</th>
+            <th style="width: 12%;">成本</th>
+            <th style="width: 13%;">成小</th>
+            <th style="width: 12%;">利潤</th>
           </tr>
         </thead>
         <tbody>${purchaseRows}</tbody>
       </table>
-      <div class="doc-summary-box text-end border-top pt-1">
-        <div><small class="text-muted">原價：$${fmtNum(orderObj['原始總金額'])} | 成本：$${fmtNum(orderObj['總成本'] || costSum)}</small></div>
-        <div><small class="text-muted">折後實收：$${fmtNum(orderObj['應收總金額'])}</small></div>
-        <div class="fs-6 fw-bold text-success">總利潤：$${fmtNum(totalProfit)}</div>
+      
+      <div class="doc-summary-box border-top pt-1">
+        <div class="row g-0">
+          <div class="col-7 pe-1 text-start" style="max-width: 63%;">
+            <div><small class="text-muted">原價：$${fmtNum(origTotal)} (折扣:${discountRate})</small></div>
+            <div class="fw-bold text-danger" style="font-size:0.85rem;">應收總計：$${fmtNum(finalTotal)}</div>
+          </div>
+          <div class="col-5 text-end">
+            <div><small class="text-muted">總成本：$${fmtNum(purchaseCostTotal)}</small></div>
+            <div class="fw-bold ${(purchaseProfitTotal >= 0) ? 'text-success' : 'text-danger'}" style="font-size:0.85rem;">預估利潤：$${fmtNum(purchaseProfitTotal)}</div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -596,16 +658,17 @@
     previewModal.show();
   }
 
-  /* 歷史訂單紀錄：按時間排序呈現 */
+  // 📋【歷史訂單頁面 修正版】
   function renderOrders() {
     const container = document.getElementById('ordersListContainer');
     container.innerHTML = '';
     
     const sortedOrders = [...systemData.orders].sort((a, b) => new Date(b['建立日期']) - new Date(a['建立日期']));
 
-    sortedOrders.forEach((o, index) => {
-      const details = systemData.orderDetails.filter(d => d['訂單編號'] === o['訂單編號']);
-      const itemSummary = details.map(d => `${d['商品名稱']} x${d['數量']}`).join(', ') || '無明細資料';
+    sortedOrders.forEach((o) => {
+      const fin = calculateOrderFinancials(o);
+      const itemSummary = fin.detailItems.map(d => `${d.productName} x${d.qty}`).join(', ') || '無明細資料';
+      const finalTotal = parseFloat(o['應收總金額'] || o['折後總價'] || 0);
 
       container.innerHTML += `
         <div class="card p-3 border mb-3">
@@ -616,14 +679,14 @@
           <div><strong>客戶：</strong>${o['客戶名稱']} (${o['電話']||'無電話'})</div>
           <div class="text-muted"><small><strong>購買內容：</strong>${itemSummary}</small></div>
           <div class="mt-1">
-            <strong>金額：</strong><span class="text-danger fw-bold">$${fmtNum(o['應收總金額'])}</span> 
-            <small class="text-muted">(原價:$${fmtNum(o['原始總金額'])} / 折扣:${o['折扣率']})</small>
+            <strong>金額：</strong><span class="text-danger fw-bold">$${fmtNum(finalTotal)}</span> 
+            <small class="text-muted">(原價:$${fmtNum(o['原始總金額']||0)} / 折扣:${o['折扣率']||1})</small>
           </div>
           <div class="bg-light p-2 rounded mt-2 border d-flex justify-content-between align-items-center">
             <div>
               <small class="text-muted">財務摘要：</small>
-              <span>成本: $${fmtNum(o['總成本'] || 0)}</span> | 
-              <strong class="${(o['總利潤'] >= 0) ? 'text-success' : 'text-danger'}">利潤: $${fmtNum(o['總利潤'] || 0)}</strong>
+              <span>成本: $${fmtNum(fin.totalCost)}</span> | 
+              <strong class="${(fin.profit >= 0) ? 'text-success' : 'text-danger'}">利潤: $${fmtNum(fin.profit)}</strong>
             </div>
             <button class="btn btn-sm btn-outline-primary fw-bold" onclick='showDocModal(${JSON.stringify(o)})'>檢視單據</button>
           </div>
@@ -641,8 +704,10 @@
     if (custOrders.length === 0) { container.innerHTML = '<div class="alert alert-warning">該客戶尚無交易紀錄</div>'; return; }
 
     custOrders.forEach(o => {
-      const details = systemData.orderDetails.filter(d => d['訂單編號'] === o['訂單編號']);
-      let itemsHtml = details.map(d => `<li><span class="nowrap-cell">${d['商品名稱']}</span> (${d['規格']||''}) x ${d['數量']} = $${fmtNum(d['品項原價小計'])}</li>`).join('');
+      const rawDetails = systemData.orderDetails.filter(d => String(d['訂單編號']).trim() === String(o['訂單編號']).trim());
+      const details = rawDetails.map(d => parseDetailItem(d));
+      
+      let itemsHtml = details.map(d => `<li><span class="nowrap-cell">${d.productName}</span> x ${d.qty} = $${fmtNum(d.qty * d.price)}</li>`).join('');
       container.innerHTML += `
         <div class="card p-3 border mb-2">
           <div class="d-flex justify-content-between"><strong>單號: ${o['訂單編號']}</strong><span class="badge bg-secondary">${o['訂單狀態']||'已建立'}</span></div>
@@ -651,7 +716,7 @@
           <ul class="mb-1 ps-3">${itemsHtml}</ul>
           <div class="d-flex justify-content-between align-items-center mt-2">
             <button class="btn btn-sm btn-outline-primary" onclick='showDocModal(${JSON.stringify(o)})'>檢視單據</button>
-            <div class="fw-bold text-danger">實收總計: $${fmtNum(o['應收總金額'])}</div>
+            <div class="fw-bold text-danger">實收總計: $${fmtNum(o['應收總金額']||0)}</div>
           </div>
         </div>`;
     });
@@ -662,11 +727,12 @@
     rankingTable.innerHTML = '';
     const stats = {};
 
-    systemData.orderDetails.forEach(d => {
-      const name = d['商品名稱'];
-      if (!stats[name]) stats[name] = { qty: 0, total: 0 };
-      stats[name].qty += Number(d['數量']);
-      stats[name].total += Number(d['品項原價小計']);
+    systemData.orderDetails.forEach(raw => {
+      const item = parseDetailItem(raw);
+      if (!item.productName) return;
+      if (!stats[item.productName]) stats[item.productName] = { qty: 0, total: 0 };
+      stats[item.productName].qty += item.qty;
+      stats[item.productName].total += (item.qty * item.price);
     });
 
     const sorted = Object.keys(stats).map(k => ({ name: k, qty: stats[k].qty, total: stats[k].total })).sort((a,b) => b.qty - a.qty);
